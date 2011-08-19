@@ -194,11 +194,15 @@ def _PdbForBinary(obj):
   obj = obj.replace('.', '_')
   return obj + '.pdb'
 
+def _OrderFileForBinary(obj):
+  return obj + '-order.json'
+
 def _OptimizeChrome(chrome_dir, temp_dir, output_dir, log_files,
                     input_dll=None, input_pdb=None):
   _LOGGER.info('Optimizing Chrome.')
   # Generate the ordering file for chrome.dll.
 
+  order_file = _OrderFileForBinary('chrome.dll')
   cmd = [runner._GetExePath('reorder.exe'),
          '--verbose',
          '--output-stats',
@@ -206,7 +210,7 @@ def _OptimizeChrome(chrome_dir, temp_dir, output_dir, log_files,
                              else os.path.join(chrome_dir, 'chrome.dll')),
          '--instrumented-dll=%s' % os.path.join(temp_dir,
                                                 r'instrumented', 'chrome.dll'),
-         '--output-file=%s' % os.path.join(temp_dir, 'chrome.dll-order.json'),]
+         '--output-file=%s' % os.path.join(temp_dir, order_file),]
   cmd.extend(log_files)
   ret = _Subprocess(cmd)
   if ret != 0:
@@ -225,7 +229,7 @@ def _OptimizeChrome(chrome_dir, temp_dir, output_dir, log_files,
          '--input-pdb=%s' % os.path.join(output_dir, pdb_file),
          '--output-dll=%s' % os.path.join(output_dir, 'chrome.dll'),
          '--output-pdb=%s' % os.path.join(output_dir, pdb_file),
-         '--order-file=%s' % os.path.join(temp_dir, 'chrome.dll-order.json'),]
+         '--order-file=%s' % os.path.join(temp_dir, order_file),]
   ret = _Subprocess(cmd)
   if ret != 0:
     raise OptimizationError('Failed to reorder chrome.dll')
