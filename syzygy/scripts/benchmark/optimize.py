@@ -44,6 +44,8 @@ _TRACE_FLAG_LOAD_EVENTS = 0x0008
 _TRACE_FLAG_THREAD_EVENTS = 0x0010
 _TRACE_FLAG_BATCH_ENTER = 0x0020
 
+_KERNEL_TRACE_FILENAME = 'kernel.etl'
+_CALL_TRACE_FILENAME = 'call_trace.etl'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -140,8 +142,8 @@ class ProfileRunner(runner.ChromeRunner):
   def _SetUp(self):
     self.StartLogging(self._temp_dir)
 
-    call_trace_file = os.path.join(self._temp_dir, 'call_trace.etl')
-    kernel_file = os.path.join(self._temp_dir, 'kernel.etl')
+    call_trace_file = os.path.join(self._temp_dir, _CALL_TRACE_FILENAME)
+    kernel_file = os.path.join(self._temp_dir, _KERNEL_TRACE_FILENAME)
     self._log_files.append(call_trace_file)
     self._log_files.append(kernel_file)
 
@@ -315,8 +317,8 @@ def main():
     _InstrumentChrome(opts.input_dir, instrumented_dir,
                       input_dll=opts.input_dll, input_pdb=opts.input_pdb)
     _ProfileChrome(temp_dir, opts.iterations)
-    trace_files = [os.path.join(temp_dir, 'kernel.etl'),
-                   os.path.join(temp_dir, 'call_trace.etl'),]
+    trace_files = [os.path.join(temp_dir, _KERNEL_TRACE_FILENAME),
+                   os.path.join(temp_dir, _CALL_TRACE_FILENAME),]
     _OptimizeChrome(opts.input_dir, temp_dir, opts.output_dir, trace_files,
                     input_dll=opts.input_dll, input_pdb=opts.input_pdb)
     if opts.copy_to:
