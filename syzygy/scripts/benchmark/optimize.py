@@ -238,7 +238,7 @@ def _OptimizeChrome(chrome_dir, temp_dir, output_dir, log_files,
 
 
 def _CopyBinaries(src_dir, tgt_dir):
-  files = ('chrome.dll', 'chrome_dll.pdb')
+  files = _EXECUTABLES + map(_PdbForBinary, _EXECUTABLES)
   for file in files:
     src_file = os.path.join(src_dir, file)
     tgt_file = os.path.join(tgt_dir, file)
