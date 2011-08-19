@@ -190,6 +190,9 @@ def _ProfileChrome(temp_dir, iterations):
   runner.Run(iterations)
   return runner._log_files
 
+def _PdbForBinary(obj):
+  obj = obj.replace('.', '_')
+  return obj + '.pdb'
 
 def _OptimizeChrome(chrome_dir, temp_dir, output_dir, log_files,
                     input_dll=None, input_pdb=None):
@@ -215,12 +218,13 @@ def _OptimizeChrome(chrome_dir, temp_dir, output_dir, log_files,
 
   _LOGGER.info('Copying "%s" to output dir "%s".', chrome_dir, output_dir)
   _CopyChromeFiles(chrome_dir, output_dir, input_dll, input_pdb)
+  pdb_file = _PdbForBinary('chrome.dll')
   cmd = [runner._GetExePath('relink.exe'),
          '--verbose',
          '--input-dll=%s' % os.path.join(output_dir, 'chrome.dll'),
-         '--input-pdb=%s' % os.path.join(output_dir, 'chrome_dll.pdb'),
+         '--input-pdb=%s' % os.path.join(output_dir, pdb_file),
          '--output-dll=%s' % os.path.join(output_dir, 'chrome.dll'),
-         '--output-pdb=%s' % os.path.join(output_dir, 'chrome_dll.pdb'),
+         '--output-pdb=%s' % os.path.join(output_dir, pdb_file),
          '--order-file=%s' % os.path.join(temp_dir, 'chrome.dll-order.json'),]
   ret = _Subprocess(cmd)
   if ret != 0:
