@@ -32,6 +32,7 @@ import time
 
 
 _EXECUTABLES = ['chrome.dll']
+_MAIN_LIBRARY = _EXECUTABLES[0]
 
 
 # From call_trace_defs.h.
@@ -122,12 +123,13 @@ def _CopyChromeFiles(src_dir, tgt_dir, input_dll, input_pdb):
         pass
 
   if input_dll:
-    chrome_dll = os.path.join(tgt_dir, 'chrome.dll')
+    chrome_dll = os.path.join(tgt_dir, _MAIN_LIBRARY)
     _LOGGER.info('Copying "%s" to "%s"', input_dll, chrome_dll)
     shutil.copy2(input_dll, chrome_dll)
 
   if input_pdb:
-    chrome_dll_pdb = os.path.join(tgt_dir, 'chrome_dll.pdb')
+    pdb_file = _PdbForBinary(_MAIN_LIBRARY)
+    chrome_dll_pdb = os.path.join(tgt_dir, pdb_file)
     _LOGGER.info('Copying "%s" to "%s"', input_pdb, chrome_dll_pdb)
     shutil.copy2(input_pdb, chrome_dll_pdb)
 
@@ -202,21 +204,22 @@ def _OrderFileForBinary(obj):
 def _OptimizeChrome(chrome_dir, temp_dir, output_dir, log_files,
                     input_dll=None, input_pdb=None):
   _LOGGER.info('Optimizing Chrome.')
-  # Generate the ordering file for chrome.dll.
+  # Generate the ordering file for _MAIN_LIBRARY.
 
-  order_file = _OrderFileForBinary('chrome.dll')
+  lib = _MAIN_LIBRARY
+  order_file = _OrderFileForBinary(lib)
   cmd = [runner._GetExePath('reorder.exe'),
          '--verbose',
          '--output-stats',
          '--input-dll=%s' % (input_dll if input_dll
-                             else os.path.join(chrome_dir, 'chrome.dll')),
+                             else os.path.join(chrome_dir, lib)),
          '--instrumented-dll=%s' % os.path.join(temp_dir,
-                                                r'instrumented', 'chrome.dll'),
+                                                r'instrumented', lib),
          '--output-file=%s' % os.path.join(temp_dir, order_file),]
   cmd.extend(log_files)
   ret = _Subprocess(cmd)
   if ret != 0:
-    raise OptimizationError('Failed to generate an ordering for chrome.dll')
+    raise OptimizationError('Failed to generate an ordering for %s' % lib)
 
   if os.path.isdir(output_dir):
     _LOGGER.info('Removing pre-existing output dir "%s".', output_dir)
@@ -224,17 +227,17 @@ def _OptimizeChrome(chrome_dir, temp_dir, output_dir, log_files,
 
   _LOGGER.info('Copying "%s" to output dir "%s".', chrome_dir, output_dir)
   _CopyChromeFiles(chrome_dir, output_dir, input_dll, input_pdb)
-  pdb_file = _PdbForBinary('chrome.dll')
+  pdb_file = _PdbForBinary(lib)
   cmd = [runner._GetExePath('relink.exe'),
          '--verbose',
-         '--input-dll=%s' % os.path.join(output_dir, 'chrome.dll'),
+         '--input-dll=%s' % os.path.join(output_dir, lib),
          '--input-pdb=%s' % os.path.join(output_dir, pdb_file),
-         '--output-dll=%s' % os.path.join(output_dir, 'chrome.dll'),
+         '--output-dll=%s' % os.path.join(output_dir, lib),
          '--output-pdb=%s' % os.path.join(output_dir, pdb_file),
          '--order-file=%s' % os.path.join(temp_dir, order_file),]
   ret = _Subprocess(cmd)
   if ret != 0:
-    raise OptimizationError('Failed to reorder chrome.dll')
+    raise OptimizationError('Failed to reorder %s' % lib)
 
 
 def _CopyBinaries(src_dir, tgt_dir):
