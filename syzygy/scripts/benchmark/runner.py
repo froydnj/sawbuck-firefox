@@ -227,8 +227,13 @@ class ChromeRunner(object):
 
   def _LaunchChromeImpl(self, extra_arguments=None):
     """Launch a Chrome instance in our profile dir, with extra_arguments."""
-    cmd_line = [self._chrome_exe,
-                '--user-data-dir=%s' % self._profile_dir]
+    cmd_line = [self._chrome_exe]
+    # XXX hack due to different profile functionality
+    if self._controller == chrome_control:
+      cmd_line.extend(['--user-data-dir=%s' % self._profile_dir])
+    else:
+      if '-CreateProfile' not in extra_arguments:
+        cmd_line.extend(['-profile', self._profile_dir])
     if extra_arguments:
       cmd_line.extend(extra_arguments)
 
@@ -240,9 +245,13 @@ class ChromeRunner(object):
     Chrome in that directory.
     """
     _LOGGER.info('Initializing profile dir "%s".', self._profile_dir)
-    self._LaunchChromeImpl(['--no-first-run'])
-    self._WaitTillChromeRunning()
-    self._controller.ShutDown(self._profile_dir)
+    # XXX hack due to different profile initialization functionality
+    if self._controller == chrome_control:
+      self._LaunchChromeImpl(['--no-first-run'])
+      self._WaitTillChromeRunning()
+      self._controller.ShutDown(self._profile_dir)
+    else:
+      self._LaunchChromeImpl(['-CreateProfile', self._profile_dir])
 
   def _WaitTillChromeRunning(self):
     """Wait until Chrome is running in our profile directory.
