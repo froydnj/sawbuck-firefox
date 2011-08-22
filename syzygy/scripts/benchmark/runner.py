@@ -16,6 +16,7 @@
 extract metrics from ETW traces."""
 
 import chrome_control
+import firefox_control
 import ctypes
 import ctypes.wintypes
 import etw
@@ -146,6 +147,10 @@ class ChromeRunner(object):
     self._chrome_exe = chrome_exe
     self._profile_dir = profile_dir
     self._initialize_profile = initialize_profile
+    if re.search('chrome', chrome_exe):
+      self._controller = chrome_control
+    else:
+      self._controller = firefox_control
 
   def Run(self, iterations):
     """Runs the benchmark for a given number of iterations.
@@ -172,11 +177,11 @@ class ChromeRunner(object):
 
   def _SetUp(self):
     """Invoked once before a set of iterations."""
-    if chrome_control.IsProfileRunning(self._profile_dir):
+    if self._controller.IsProfileRunning(self._profile_dir):
       _LOGGER.warning(
           'Chrome already running in profile "%s", shutting it down.',
           self._profile_dir)
-      chrome_control.ShutDown(self._profile_dir)
+      self._controller.ShutDown(self._profile_dir)
 
     if self._initialize_profile:
       shutil.rmtree(self._profile_dir, True)
@@ -198,7 +203,7 @@ class ChromeRunner(object):
     self._DoIteration(i)
 
     _LOGGER.info("Shutting down Chrome Profile: %s", self._profile_dir)
-    chrome_control.ShutDown(self._profile_dir)
+    self._controller.ShutDown(self._profile_dir)
 
   def _DoIteration(self, it):
     """Invoked each iteration after Chrome has successfully launched."""
@@ -237,7 +242,7 @@ class ChromeRunner(object):
     _LOGGER.info('Initializing profile dir "%s".', self._profile_dir)
     self._LaunchChromeImpl(['--no-first-run'])
     self._WaitTillChromeRunning()
-    chrome_control.ShutDown(self._profile_dir)
+    self._controller.ShutDown(self._profile_dir)
 
   def _WaitTillChromeRunning(self):
     """Wait until Chrome is running in our profile directory.
@@ -248,7 +253,7 @@ class ChromeRunner(object):
     # Use a long timeout just in case the machine is REALLY bogged down.
     # This could be the case on the builtbot slave, for example.
     for i in xrange(300):
-      if chrome_control.IsProfileRunning(self._profile_dir):
+      if self._controller.IsProfileRunning(self._profile_dir):
         return
       time.sleep(1)
 
@@ -294,13 +299,13 @@ class BenchmarkRunner(ChromeRunner):
 
   def _SetUp(self):
     super(BenchmarkRunner, self)._SetUp()
-    self._old_preload = chrome_control.GetPreload()
-    chrome_control.SetPreload(self._preload)
+    self._old_preload = self._controller.GetPreload()
+    self._controller.SetPreload(self._preload)
     self._temp_dir = tempfile.mkdtemp(prefix='chrome-bench')
     _LOGGER.info('Created temporary directory "%s".', self._temp_dir)
 
   def _TearDown(self):
-    chrome_control.SetPreload(*self._old_preload)
+    self._controller.SetPreload(*self._old_preload)
     if self._temp_dir and not self._keep_temp_dirs:
       _LOGGER.info('Deleting temporary directory "%s".', self._temp_dir)
       shutil.rmtree(self._temp_dir, ignore_errors=True)
