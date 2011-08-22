@@ -22,6 +22,7 @@
           'benchmark.py',
           'chrome_control.py',
           'chrome_control_test.py',
+          'firefox_control.py',
           'event_counter.py',
           'optimize.py',
           'runner.py',
