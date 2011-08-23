@@ -49,6 +49,7 @@ _PACKAGE_DIRS = {
 _MODULES = [
   'benchmark',
   'chrome_control',
+  'firefox_control',
   'event_counter',
   'optimize',
   'runner',
