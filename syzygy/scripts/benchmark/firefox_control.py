@@ -1,6 +1,7 @@
 #!/usr/bin/python2.6
 """A utility module for controlling Firefox instances."""
 
+import re
 import exceptions
 import os.path
 import pywintypes
@@ -26,16 +27,23 @@ kClassNameFirefox = 'FirefoxMessageWindow'
 # a profile directory.
 def _FindFirefoxWindow(name):
     try:
-        return win32gui.FindWindoxEx(None, None, name, None)
+        return win32gui.FindWindowEx(None, None, name, None)
     except pywintypes.error:
         return None
 
-def _SendMozEndSession(window, ignored):
-    # See widget/src/windows/nsWindowDefs.h.
-    MOZ_WM_APP_QUIT = win32con.WM_APP + 0x0300
+# See widget/src/windows/nsWindowDefs.h.
+MOZ_WM_APP_QUIT = win32con.WM_APP + 0x0300
 
-    if win32gui.GetClassName(window) == kClassNameGeneral:
-        win32gui.PostMessage(window, MOZ_WM_APP_QUIT)
+def locate_firefox_windows(w, data):
+  cname = win32gui.GetClassName(w)
+  text = win32gui.GetWindowText(w)
+  # Record that we found a Firefox window.
+  if (cname == kClassNameFirefox
+      or (text and re.search(text, 'Mozilla Firefox'))):
+    data[0] = w
+  # Note the windows that we want to quit.
+  if cname == kClassNameGeneral:
+    data[1].append(w)
 
 def ShutDown(profile_dir, timeout_ms=win32event.INFINITE):
   message_win = _FindFirefoxWindow(kClassNameFirefox)
@@ -49,7 +57,11 @@ def ShutDown(profile_dir, timeout_ms=win32event.INFINITE):
   permissions = win32con.SYNCHRONIZE | win32con.PROCESS_QUERY_INFORMATION
   process_handle = win32api.OpenProcess(permissions, False, process_id)
 
-  win32gui.EnumThreadWindows(thread_id, _SendMozEndSession, None)
+  data = [ None, [] ]
+  win32gui.EnumThreadWindows(thread_id, locate_firefox_windows, data)
+  if data[0]:
+    for kw in data[1]:
+      win32gui.PostMessage(kw, MOZ_WM_APP_QUIT)
 
   result = win32event.WaitForSingleObject(process_handle, timeout_ms)
   exit_status = win32process.GetExitCodeProcess(process_handle)
