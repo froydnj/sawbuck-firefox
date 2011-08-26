@@ -23,11 +23,7 @@ import etw_db
 import logging
 import optparse
 import re
-
-
-# TODO(siggi): make this configurable?
-_CHROME_RE = re.compile(r'^chrome\.exe$', re.I)
-
+import os
 
 # Set up a file-local logger.
 _LOGGER = logging.getLogger(__name__)
@@ -36,14 +32,17 @@ _LOGGER = logging.getLogger(__name__)
 class LogEventCounter(etw.EventConsumer):
   """A utility class to parse salient metrics from ETW logs."""
 
-  def __init__(self, file_db, module_db, process_db):
+  def __init__(self, exe_path, file_db, module_db, process_db):
     """Initialize a log event counter.
 
     Args:
+        exe_path: a path to the executable in which we're interested.
         file_db: an etw_db.FileNameDatabase instance.
         module_db: an etw_db.ModuleDatabase instance.
         process_db: an etw_db.ProcessThreadDatabase instance.
     """
+    exe_name = os.path.basename(exe_path)
+    self._exe_re = re.compile('^' + re.escape(exe_name) + '$', re.I)
     self._file_db = file_db
     self._module_db = module_db
     self._process_db = process_db
@@ -53,14 +52,14 @@ class LogEventCounter(etw.EventConsumer):
 
   @etw.EventHandler(process.Event.Start)
   def _OnProcessStart(self, event):
-    if _CHROME_RE.search(event.ImageFileName):
+    if self._exe_re.search(event.ImageFileName):
       self._process_launch.append(event.time_stamp)
 
   @etw.EventHandler(pagefault.Event.HardFault)
   def _OnHardFault(self, event):
     # Resolve the thread id in the event back to the faulting process.
     process = self._process_db.GetThreadProcess(event.TThreadId)
-    if process and _CHROME_RE.search(process.image_file_name):
+    if process and self._exe_re.search(process.image_file_name):
       self._hardfaults += 1
 
   @etw.EventHandler(pagefault.Event.AccessViolation,
@@ -71,5 +70,5 @@ class LogEventCounter(etw.EventConsumer):
   def _OnSoftFault(self, event):
     # Resolve the faulting process.
     process = self._process_db.GetProcess(event.process_id)
-    if process and _CHROME_RE.search(process.image_file_name):
+    if process and self._exe_re.search(process.image_file_name):
       self._softfaults += 1

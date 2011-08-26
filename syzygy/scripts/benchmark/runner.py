@@ -369,23 +369,25 @@ class BenchmarkRunner(ChromeRunner):
     file_db = etw_db.FileNameDatabase()
     module_db = etw_db.ModuleDatabase()
     process_db = etw_db.ProcessThreadDatabase()
-    counter = event_counter.LogEventCounter(file_db, module_db, process_db)
+    counter = event_counter.LogEventCounter(self._chrome_exe, file_db,
+                                            module_db, process_db)
     parser.AddHandler(file_db)
     parser.AddHandler(module_db)
     parser.AddHandler(process_db)
     parser.AddHandler(counter)
     parser.Consume()
 
+    name = os.path.basename(self._chrome_exe)
     # TODO(siggi): Other metrics, notably:
     #   Time from launch of browser to interesting TRACE_EVENT metrics
     #     in browser and renderers.
-    self._AddResult('Chrome', 'HardPageFaults', counter._hardfaults)
-    self._AddResult('Chrome', 'SoftPageFaults', counter._softfaults)
+    self._AddResult(name, 'HardPageFaults', counter._hardfaults)
+    self._AddResult(name, 'SoftPageFaults', counter._softfaults)
 
     if counter._process_launch and len(counter._process_launch) >= 2:
       browser_start = counter._process_launch.pop(0)
       renderer_start = counter._process_launch.pop(0)
-      self._AddResult('Chrome',
+      self._AddResult(name,
                       'RendererLaunchTime',
                       renderer_start - browser_start,
                       's')
